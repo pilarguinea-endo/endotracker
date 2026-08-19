@@ -1,0 +1,8 @@
+{
+  "name": "EndoTracker",
+  "short_name": "EndoTracker",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#FAFAF8",
+  "theme_color": "#FAFAF8"
+}
