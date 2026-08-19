@@ -186,7 +186,8 @@ function chipTint(color, alpha) {
 }
 
 // ---------- Date helpers ----------
-const TODAY = new Date(2026, 6, 22); // Jul 22, 2026
+const _now = new Date();
+const TODAY = new Date(_now.getFullYear(), _now.getMonth(), _now.getDate());
 
 function dateKey(d) {
   const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, "0"), day = String(d.getDate()).padStart(2, "0");
@@ -234,76 +235,8 @@ function findLog(logs, date) {
   return logs.find((l) => dateKey(l.dateObj) === dateKey(date));
 }
 
-// Synthetic demo data for portfolio/testing purposes only — not sourced from any real patient.
-// Spans roughly 4 months with 3 logged cycles, clustering pelvic/GI/fatigue symptoms
-// near each period while immune/neuro symptoms appear scattered independently of it.
-const SEED_PERIODS = [
-  { start: new Date(2026, 0, 20), end: new Date(2026, 0, 25) },
-  { start: new Date(2026, 1, 17), end: new Date(2026, 1, 22) },
-  { start: new Date(2026, 2, 24), end: new Date(2026, 2, 29) },
-  { start: new Date(2026, 3, 19), end: new Date(2026, 3, 24) },
-  { start: new Date(2026, 4, 30), end: new Date(2026, 5, 4) },
-  { start: new Date(2026, 5, 25), end: new Date(2026, 5, 30) },
-  { start: new Date(2026, 6, 20), end: null },
-];
-
-const SEED_SYMPTOM_LOG = [
-  // Cycle 1 (28-day cycle to next period)
-  { date: new Date(2026, 0, 20), items: [["pelvic", "periodPain"], ["gi", "bloating"]] },
-  { date: new Date(2026, 0, 21), items: [["pelvic", "periodPain"], ["hormonal", "fatigue"]] },
-  { date: new Date(2026, 0, 22), items: [["pelvic", "periodPain"], ["gi", "nausea"]] },
-  { date: new Date(2026, 0, 28), items: [["immune", "jointPain", "Left knee"]] },
-  { date: new Date(2026, 1, 2), items: [["neuro", "brainFog"]] },
-  { date: new Date(2026, 1, 8), items: [["immune", "inflammation", "Lower abdomen"]] },
-  { date: new Date(2026, 1, 13), items: [["hormonal", "sleepDisruption"]] },
-  // Cycle 2 (35-day cycle to next period — longer)
-  { date: new Date(2026, 1, 17), items: [["pelvic", "periodPain"], ["gi", "bloating"]] },
-  { date: new Date(2026, 1, 18), items: [["pelvic", "periodPain"], ["hormonal", "moodSwings"]] },
-  { date: new Date(2026, 1, 19), items: [["gi", "constipation"]] },
-  { date: new Date(2026, 1, 25), items: [["pelvic", "nonPeriodPain"]] },
-  { date: new Date(2026, 2, 4), items: [["neuro", "headache"]] },
-  { date: new Date(2026, 2, 10), items: [["pelvic", "ovulationPain"]] },
-  { date: new Date(2026, 2, 16), items: [["immune", "swelling", "Both ankles"]] },
-  { date: new Date(2026, 2, 20), items: [["hormonal", "breastTenderness"]] },
-  // Cycle 3 (26-day cycle to next period — shorter)
-  { date: new Date(2026, 2, 24), items: [["pelvic", "periodPain"], ["gi", "bloating"]] },
-  { date: new Date(2026, 2, 25), items: [["pelvic", "periodPain"], ["hormonal", "fatigue"]] },
-  { date: new Date(2026, 2, 26), items: [["pelvic", "periodPain"], ["gi", "nausea"]] },
-  { date: new Date(2026, 3, 1), items: [["immune", "jointPain", "Right hip"]] },
-  { date: new Date(2026, 3, 6), items: [["pelvic", "painDuringSex"]] },
-  { date: new Date(2026, 3, 10), items: [["neuro", "dizziness"]] },
-  { date: new Date(2026, 3, 14), items: [["neuro", "nervePain", "Left leg, shooting down to the foot"]] },
-  // Cycle 4 (41-day cycle to next period — noticeably longer)
-  { date: new Date(2026, 3, 19), items: [["pelvic", "periodPain"], ["gi", "bloating"]] },
-  { date: new Date(2026, 3, 20), items: [["pelvic", "periodPain"], ["hormonal", "emotionalSensitivity"]] },
-  { date: new Date(2026, 3, 21), items: [["pelvic", "periodPain"], ["gi", "nausea"]] },
-  { date: new Date(2026, 3, 28), items: [["neuro", "brainFog"]] },
-  { date: new Date(2026, 4, 5), items: [["hormonal", "sleepDisruption"]] },
-  { date: new Date(2026, 4, 12), items: [["immune", "inflammation", "Knuckles, right hand"]] },
-  { date: new Date(2026, 4, 18), items: [["neuro", "lightheadedness"]] },
-  { date: new Date(2026, 4, 24), items: [["hormonal", "fatigue"]] },
-  // Cycle 5 (26-day cycle to next period — shorter)
-  { date: new Date(2026, 4, 30), items: [["pelvic", "periodPain"], ["gi", "bloating"]] },
-  { date: new Date(2026, 4, 31), items: [["pelvic", "periodPain"], ["hormonal", "fatigue"]] },
-  { date: new Date(2026, 5, 1), items: [["pelvic", "periodPain"], ["gi", "nausea"]] },
-  { date: new Date(2026, 5, 8), items: [["immune", "jointPain", "Left shoulder"]] },
-  { date: new Date(2026, 5, 14), items: [["neuro", "headache"]] },
-  { date: new Date(2026, 5, 19), items: [["immune", "swelling", "Right wrist"]] },
-  // Cycle 6 (25-day cycle to next period — shorter again)
-  { date: new Date(2026, 5, 25), items: [["pelvic", "periodPain"], ["gi", "bloating"]] },
-  { date: new Date(2026, 5, 26), items: [["pelvic", "periodPain"], ["hormonal", "anxiety"]] },
-  { date: new Date(2026, 5, 27), items: [["pelvic", "periodPain"], ["gi", "nausea"]] },
-  { date: new Date(2026, 6, 3), items: [["pelvic", "nonPeriodPain"]] },
-  { date: new Date(2026, 6, 8), items: [["immune", "inflammation", "Lower back"]] },
-  { date: new Date(2026, 6, 14), items: [["neuro", "dizziness"]] },
-  // Cycle 7 (current, ongoing)
-  { date: new Date(2026, 6, 20), items: [["pelvic", "periodPain"], ["gi", "bloating"]] },
-  { date: new Date(2026, 6, 21), items: [["pelvic", "periodPain"], ["hormonal", "fatigue"]] },
-];
-
 // ---------- Google Sheets sync ----------
 // After deploying the Apps Script web app (see setup instructions), paste its URL here.
-// Leave as-is and the app runs in local demo mode with the seed data below.
 const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwE6mRP8DZh0OYqYXWCN4OVNyJHj1ZtORDElLYvbwvweR1J1N5_iXk27IxcqriA45kciA/exec";
 const SYNC_ENABLED = WEBAPP_URL.startsWith("https://");
 
@@ -323,17 +256,7 @@ function deserializeState(data) {
 }
 
 function buildInitialLogs() {
-  const logs = SEED_SYMPTOM_LOG.map(({ date, items }) => {
-    const entries = emptyEntries();
-    items.forEach(([systemId, symptomId, location]) => {
-      entries[systemId].push({ id: `${systemId}-${symptomId}-${dateKey(date)}`, symptomId, note: "", location: location || "" });
-    });
-    return { dateObj: new Date(date), dateLabel: labelForDate(date), entries };
-  });
-  if (!logs.some((l) => dateKey(l.dateObj) === dateKey(TODAY))) {
-    logs.push({ dateObj: new Date(TODAY), dateLabel: "Today", entries: emptyEntries() });
-  }
-  return logs.sort((a, b) => a.dateObj - b.dateObj);
+  return [{ dateObj: new Date(TODAY), dateLabel: "Today", entries: emptyEntries(), substances: [] }];
 }
 
 function systemCount(entriesArray) {
@@ -347,43 +270,63 @@ function symptomCountForDay(entriesArray, symptomId) {
 function App() {
   const [tab, setTab] = useState("calendar");
   const [logs, setLogs] = useState(buildInitialLogs);
-  const [periods, setPeriods] = useState(SEED_PERIODS);
+  const [periods, setPeriods] = useState([]);
   const [logDate, setLogDate] = useState(new Date(TODAY));
   const [syncStatus, setSyncStatus] = useState(SYNC_ENABLED ? "loading" : "demo");
   const hasLoadedRef = useRef(!SYNC_ENABLED);
   const saveTimerRef = useRef(null);
 
-  // Load saved data from the Google Sheet on first mount.
+  // Load saved data from the Google Sheet on first mount. Retries a couple
+  // times before giving up, since Apps Script can be slow to wake up.
   useEffect(() => {
     if (!SYNC_ENABLED) return;
-    fetch(WEBAPP_URL)
-      .then((res) => res.json())
-      .then((data) => {
-        const { logs: loadedLogs, periods: loadedPeriods } = deserializeState(data);
-        setLogs(loadedLogs.length ? loadedLogs : [{ dateObj: new Date(TODAY), dateLabel: "Today", entries: emptyEntries(), substances: [] }]);
-        setPeriods(loadedPeriods);
-        setSyncStatus("synced");
-        hasLoadedRef.current = true;
-      })
-      .catch(() => {
-        setSyncStatus("error");
-        hasLoadedRef.current = true;
-      });
+    function attemptLoad(retriesLeft) {
+      fetch(WEBAPP_URL)
+        .then((res) => res.json())
+        .then((data) => {
+          const { logs: loadedLogs, periods: loadedPeriods } = deserializeState(data);
+          setLogs(loadedLogs.length ? loadedLogs : [{ dateObj: new Date(TODAY), dateLabel: "Today", entries: emptyEntries(), substances: [] }]);
+          setPeriods(loadedPeriods);
+          setSyncStatus("synced");
+          hasLoadedRef.current = true;
+        })
+        .catch(() => {
+          if (retriesLeft > 0) {
+            setTimeout(() => attemptLoad(retriesLeft - 1), 1500);
+          } else {
+            setSyncStatus("error");
+            hasLoadedRef.current = true;
+          }
+        });
+    }
+    attemptLoad(2);
   }, []);
 
   // Save to the Google Sheet whenever logs or periods change, debounced.
+  // Retries a couple times before showing an error, since Apps Script can
+  // have brief cold-start delays that aren't real failures.
   useEffect(() => {
     if (!SYNC_ENABLED || !hasLoadedRef.current) return;
     setSyncStatus("saving");
     clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      fetch(WEBAPP_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: serializeState(logs, periods),
-      })
-        .then(() => setSyncStatus("synced"))
-        .catch(() => setSyncStatus("error"));
+      const body = serializeState(logs, periods);
+      function attemptSave(retriesLeft) {
+        fetch(WEBAPP_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" },
+          body,
+        })
+          .then(() => setSyncStatus("synced"))
+          .catch(() => {
+            if (retriesLeft > 0) {
+              setTimeout(() => attemptSave(retriesLeft - 1), 1500);
+            } else {
+              setSyncStatus("error");
+            }
+          });
+      }
+      attemptSave(2);
     }, 800);
     return () => clearTimeout(saveTimerRef.current);
   }, [logs, periods]);
@@ -1043,7 +986,7 @@ function CalendarTab({ logs, periods, periodActive, currentCycleDay, startPeriod
               </div>
             ) : dayPeriodIdx === -1 ? (
               periodActive ? null : (
-                <button onClick={() => handleStartClick(selectedDay)} style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: COLORS.ink, color: COLORS.bg, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
+                <button onClick={() => handleStartClick(selectedDay)} style={{ padding: "8px 14px", borderRadius: 8, border: `1px solid ${COLORS.line}`, background: "transparent", color: COLORS.inkSoft, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
                   Period started
                 </button>
               )
