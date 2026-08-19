@@ -12,6 +12,7 @@ self.addEventListener("activate", (event) => {
 // cache if the network request fails (e.g. offline). This avoids getting
 // stuck showing an old cached version after you or Claude update the files.
 self.addEventListener("fetch", (event) => {
+  if (!event.request.url.startsWith("http")) return;
   event.respondWith(
     fetch(event.request)
       .then((response) => {
