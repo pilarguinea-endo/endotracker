@@ -333,7 +333,6 @@ function App() {
 
   const lastPeriod = periods[periods.length - 1];
   const periodActive = lastPeriod && !lastPeriod.end;
-  const currentCycleDay = lastPeriod ? daysBetween(lastPeriod.start, TODAY) + 1 : null;
 
   function goToLogDay(date) {
     setLogDate(date);
@@ -406,7 +405,7 @@ function App() {
         <div className="print-hide" style={{ marginBottom: 22, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <LogoMark size={36} />
-            <div style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: 30, letterSpacing: "-0.01em" }}>EndoTracker</div>
+            <div style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: 24, letterSpacing: "-0.01em" }}>EndoTracker</div>
           </div>
           <div style={{ fontSize: 11.5, fontWeight: 500 }}>
             {syncStatus === "demo" && <span style={{ color: COLORS.inkFaint }}>Demo mode · not saved</span>}
@@ -440,10 +439,10 @@ function App() {
         )}
 
         {tab === "painlog" && (
-          <PainLogTab logs={logs} addSymptomEntries={addSymptomEntries} removeSymptomEntry={removeSymptomEntry} updateSubstances={updateSubstances} selectedDate={logDate} setSelectedDate={setLogDate} onBack={() => setTab("calendar")} />
+          <PainLogTab logs={logs} addSymptomEntries={addSymptomEntries} removeSymptomEntry={removeSymptomEntry} updateSubstances={updateSubstances} selectedDate={logDate} setSelectedDate={setLogDate} onBack={() => setTab("calendar")} periods={periods} periodActive={periodActive} startPeriod={startPeriod} updatePeriod={updatePeriod} />
         )}
         {tab === "calendar" && (
-          <CalendarTab logs={logs} periods={periods} periodActive={periodActive} currentCycleDay={currentCycleDay} startPeriod={startPeriod} updatePeriod={updatePeriod} deletePeriod={deletePeriod} onLogDay={goToLogDay} />
+          <CalendarTab logs={logs} periods={periods} periodActive={periodActive} startPeriod={startPeriod} updatePeriod={updatePeriod} deletePeriod={deletePeriod} onLogDay={goToLogDay} />
         )}
         {tab === "periodlog" && <PeriodLogTab periods={periods} logs={logs} />}
         {tab === "summary" && <SummaryTab logs={logs} periods={periods} />}
@@ -453,7 +452,7 @@ function App() {
 }
 
 // ---------- Pain Log tab ----------
-function PainLogTab({ logs, addSymptomEntries, removeSymptomEntry, updateSubstances, selectedDate, setSelectedDate, onBack }) {
+function PainLogTab({ logs, addSymptomEntries, removeSymptomEntry, updateSubstances, selectedDate, setSelectedDate, onBack, periods, periodActive, startPeriod, updatePeriod }) {
   const [selected, setSelected] = useState({});
   const [locations, setLocations] = useState({});
   const [infoSymptomId, setInfoSymptomId] = useState(null);
@@ -469,6 +468,15 @@ function PainLogTab({ logs, addSymptomEntries, removeSymptomEntry, updateSubstan
   const currentSubstances = currentLog.substances || [];
   const presetLabels = SUBSTANCE_OPTIONS.map((o) => o.label);
   const customSubstances = currentSubstances.filter((s) => !presetLabels.includes(s));
+  const dayPeriodIdx = findPeriodIndexForDate(periods, selectedDate);
+  const periodIsOngoingForDay = periods[dayPeriodIdx] && !periods[dayPeriodIdx].end;
+
+  function markPeriodStarted() {
+    startPeriod(selectedDate);
+  }
+  function markPeriodEnded() {
+    updatePeriod(dayPeriodIdx, { end: selectedDate });
+  }
 
   function toggleSubstance(label) {
     const next = currentSubstances.includes(label) ? currentSubstances.filter((s) => s !== label) : [...currentSubstances, label];
@@ -566,7 +574,27 @@ function PainLogTab({ logs, addSymptomEntries, removeSymptomEntry, updateSubstan
               {isToday && <span style={{ color: COLORS.inkFaint, fontWeight: 500 }}> · {formatDate(selectedDate)}</span>}
             </div>
           </div>
+          {dayPeriodIdx === -1 && !periodActive && (
+            <button
+              onClick={markPeriodStarted}
+              style={{ flexShrink: 0, padding: "7px 12px", borderRadius: 8, border: `1px solid ${COLORS.line}`, background: "transparent", color: COLORS.inkSoft, fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+            >
+              Period started
+            </button>
+          )}
+          {periodIsOngoingForDay && (
+            <button
+              onClick={markPeriodEnded}
+              style={{ flexShrink: 0, padding: "7px 12px", borderRadius: 8, border: `1px solid ${COLORS.line}`, background: "transparent", color: COLORS.inkSoft, fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}
+            >
+              Period ended
+            </button>
+          )}
         </div>
+
+        {dayPeriodIdx !== -1 && !periodIsOngoingForDay && (
+          <div style={{ marginTop: 8, fontSize: 12, color: COLORS.inkFaint }}>Part of a logged period.</div>
+        )}
 
         {yesterdayItems.length > 0 && (
           <div style={{ marginTop: 14 }}>
@@ -603,7 +631,9 @@ function PainLogTab({ logs, addSymptomEntries, removeSymptomEntry, updateSubstan
         )}
       </div>
 
-      <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.inkSoft, marginBottom: 10 }}>What symptoms happened {isToday ? "today" : "that day"}? Tap all that apply.</div>
+      <LoggedList log={currentLog} label={labelForDate(selectedDate)} onRemove={(systemId, entryId) => removeSymptomEntry(selectedDate, systemId, entryId)} />
+
+      <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.inkSoft, marginBottom: 10, marginTop: 18 }}>What symptoms happened {isToday ? "today" : "that day"}? Tap all that apply.</div>
 
       {SYSTEMS.map((s) => (
         <div key={s.id} style={{ marginBottom: 16 }}>
@@ -728,8 +758,6 @@ function PainLogTab({ logs, addSymptomEntries, removeSymptomEntry, updateSubstan
 
       {(totalSelected > 0 || justSaved) && <div style={{ height: totalSelected > 0 ? 172 : 76 }} />}
 
-      <LoggedList log={currentLog} label={labelForDate(selectedDate)} onRemove={(systemId, entryId) => removeSymptomEntry(selectedDate, systemId, entryId)} />
-
       {(totalSelected > 0 || justSaved) && (
         <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, display: "flex", justifyContent: "center", padding: "12px 16px", zIndex: 50, pointerEvents: "none" }}>
           <div style={{ width: "100%", maxWidth: 688, background: COLORS.surface, border: `1px solid ${COLORS.line}`, borderRadius: 12, padding: 14, boxShadow: "0 -4px 16px rgba(36,49,43,0.12)", pointerEvents: "auto" }}>
@@ -798,9 +826,12 @@ function LoggedList({ log, label, onRemove }) {
         {rows.map(({ system, entry }) => (
           <div key={entry.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, fontSize: 12.5, background: COLORS.surface, border: `1px solid ${COLORS.line}`, borderRadius: 10, padding: "8px 12px" }}>
             <div>
-              <div style={{ fontWeight: 500 }}>{symptomLabel(system, entry.symptomId)} <span style={{ color: COLORS.inkFaint }}>· {system.short}</span></div>
-              {entry.location && <div style={{ color: COLORS.inkSoft, marginTop: 2 }}>Location: {entry.location}</div>}
-              {entry.note && <div style={{ color: COLORS.inkSoft, marginTop: 2 }}>{entry.note}</div>}
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 8, background: system.color, flexShrink: 0 }} />
+                <span style={{ fontWeight: 500 }}>{symptomLabel(system, entry.symptomId)} <span style={{ color: COLORS.inkFaint }}>· {system.short}</span></span>
+              </div>
+              {entry.location && <div style={{ color: COLORS.inkSoft, marginTop: 2, paddingLeft: 16 }}>Location: {entry.location}</div>}
+              {entry.note && <div style={{ color: COLORS.inkSoft, marginTop: 2, paddingLeft: 16 }}>{entry.note}</div>}
             </div>
             <button onClick={() => onRemove(system.id, entry.id)} aria-label={`Remove ${symptomLabel(system, entry.symptomId)}`} style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.inkFaint, flexShrink: 0, minWidth: 24, minHeight: 24, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <X size={14} />
@@ -813,7 +844,7 @@ function LoggedList({ log, label, onRemove }) {
 }
 
 // ---------- Calendar tab ----------
-function CalendarTab({ logs, periods, periodActive, currentCycleDay, startPeriod, updatePeriod, deletePeriod, onLogDay }) {
+function CalendarTab({ logs, periods, periodActive, startPeriod, updatePeriod, deletePeriod, onLogDay }) {
   const [calendarMonth, setCalendarMonth] = useState(new Date(TODAY.getFullYear(), TODAY.getMonth(), 1));
   const [selectedDay, setSelectedDay] = useState(null);
   const [editStart, setEditStart] = useState("");
@@ -912,62 +943,89 @@ function CalendarTab({ logs, periods, periodActive, currentCycleDay, startPeriod
 
   return (
     <div>
-      <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.line}`, borderRadius: 12, padding: 16, marginBottom: 18 }}>
-        <div style={{ marginBottom: 10 }}>
-          {currentCycleDay ? (
-            <div style={{ fontFamily: "'Fraunces', serif", fontSize: 20, fontWeight: 600 }}>Day {currentCycleDay} of your cycle</div>
-          ) : (
-            <div style={{ fontSize: 13, color: COLORS.inkSoft }}>No period logged yet</div>
-          )}
-        </div>
-        {!selectedDay && (
+      {!selectedDay && (
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           <button
             onClick={() => onLogDay(new Date(TODAY))}
-            style={{ width: "100%", padding: "14px 16px", borderRadius: 10, border: "none", background: COLORS.pelvicDark, color: "#fff", fontSize: 15, fontWeight: 600, cursor: "pointer", marginBottom: 12 }}
+            style={{ flex: 1, padding: "14px 16px", borderRadius: 10, border: "none", background: COLORS.pelvicDark, color: "#fff", fontSize: 15, fontWeight: 600, cursor: "pointer" }}
           >
             Log symptom
           </button>
-        )}
+          {!periodActive && (
+            <button
+              onClick={() => handleStartClick(new Date(TODAY))}
+              style={{ flex: 1, padding: "14px 16px", borderRadius: 10, border: `1px solid ${COLORS.line}`, background: "transparent", color: COLORS.inkSoft, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
+            >
+              Period started
+            </button>
+          )}
+        </div>
+      )}
+      <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.line}`, borderRadius: 12, padding: 16, marginBottom: 18 }}>
+        <div style={{ marginBottom: 10 }}>
+          {selectedDay && dateKey(selectedDay) !== dateKey(TODAY) ? (
+            <div style={{ fontFamily: "'Fraunces', serif", fontSize: 20, fontWeight: 600 }}>
+              {formatDate(selectedDay)}
+              <span style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 12, fontWeight: 400, color: COLORS.inkFaint, marginLeft: 8 }}>
+                · Day in the past
+              </span>
+            </div>
+          ) : (
+            <div style={{ fontFamily: "'Fraunces', serif", fontSize: 20, fontWeight: 600 }}>
+              Today<span style={{ color: COLORS.inkFaint, fontWeight: 500 }}> · {formatDate(TODAY)}</span>
+            </div>
+          )}
+        </div>
         {!selectedDay && (
           <div style={{ fontSize: 12.5, color: COLORS.inkSoft, marginBottom: 16 }}>
-            Tap a day on the calendar to log a past day, or your period.
+            Tap a day on the calendar to log a symptom or a period.
           </div>
         )}
 
         {selectedDay && (
-          <div style={{ background: COLORS.bg, borderRadius: 10, padding: 12, marginBottom: 16 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>{formatDate(selectedDay)}</div>
-              <button onClick={closeAllPanels} aria-label="Close" style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.inkFaint, minWidth: 24, minHeight: 24, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <X size={14} />
-              </button>
-            </div>
-
+          <div style={{ marginBottom: 16 }}>
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, color: COLORS.inkFaint, textTransform: "uppercase", letterSpacing: "0.03em", marginBottom: 6 }}>Symptoms logged</div>
               {dayRows.length > 0 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                  {dayRows.map(({ system, entry }, i) => (
-                    <div key={entry.id} style={{ padding: "8px 0" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5 }}>
-                        <span style={{ width: 8, height: 8, borderRadius: 8, background: system.color, flexShrink: 0 }} />
-                        <span style={{ color: COLORS.ink, fontWeight: 500 }}>{symptomLabel(system, entry.symptomId)}</span>
-                        <span style={{ color: COLORS.inkFaint }}>{system.short}</span>
+                <>
+                  <div style={{ fontSize: 11, color: COLORS.inkFaint, textTransform: "uppercase", letterSpacing: "0.03em", marginBottom: 6 }}>Symptoms logged</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                    {dayRows.map(({ system, entry }) => (
+                      <div key={entry.id} style={{ padding: "8px 0" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: 8, background: system.color, flexShrink: 0 }} />
+                          <span style={{ color: COLORS.ink, fontWeight: 500 }}>{symptomLabel(system, entry.symptomId)}</span>
+                          <span style={{ color: COLORS.inkFaint }}>{system.short}</span>
+                        </div>
+                        {entry.location && <div style={{ color: COLORS.inkSoft, fontSize: 12, marginTop: 4, paddingLeft: 16 }}>Location: {entry.location}</div>}
+                        {entry.note && <div style={{ color: COLORS.inkSoft, fontSize: 12, marginTop: 4, paddingLeft: 16 }}>{entry.note}</div>}
                       </div>
-                      {entry.location && <div style={{ color: COLORS.inkSoft, fontSize: 12, marginTop: 4, paddingLeft: 16 }}>Location: {entry.location}</div>}
-                      {entry.note && <div style={{ color: COLORS.inkSoft, fontSize: 12, marginTop: 4, paddingLeft: 16 }}>{entry.note}</div>}
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                </>
               )}
-              <button
-                onClick={() => onLogDay(selectedDay)}
-                style={{ marginTop: dayRows.length === 0 ? 2 : 10, padding: "8px 14px", borderRadius: 8, border: "none", background: COLORS.pelvicDark, color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
-              >
-                {dayRows.length === 0
-                  ? (dateKey(selectedDay) === dateKey(TODAY) ? "Log symptom" : "Nothing logged · Log symptom")
-                  : "Add or edit symptoms"}
-              </button>
+              {!pendingStartDate && dayPeriodIdx === -1 && !periodActive ? (
+                <div style={{ display: "flex", gap: 8, marginTop: dayRows.length === 0 ? 0 : 10 }}>
+                  <button
+                    onClick={() => onLogDay(selectedDay)}
+                    style={{ flex: 1, padding: "8px 14px", borderRadius: 8, border: "none", background: COLORS.pelvicDark, color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
+                  >
+                    {dayRows.length === 0 ? "Log symptom" : "Add or edit symptoms"}
+                  </button>
+                  <button
+                    onClick={() => handleStartClick(selectedDay)}
+                    style={{ flex: 1, padding: "8px 14px", borderRadius: 8, border: `1px solid ${COLORS.line}`, background: "transparent", color: COLORS.inkSoft, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
+                  >
+                    Period started
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => onLogDay(selectedDay)}
+                  style={{ marginTop: dayRows.length === 0 ? 0 : 10, padding: "8px 14px", borderRadius: 8, border: "none", background: COLORS.pelvicDark, color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
+                >
+                  {dayRows.length === 0 ? "Log symptom" : "Add or edit symptoms"}
+                </button>
+              )}
             </div>
 
             {pendingStartDate ? (
@@ -985,11 +1043,7 @@ function CalendarTab({ logs, periods, periodActive, currentCycleDay, startPeriod
                 </div>
               </div>
             ) : dayPeriodIdx === -1 ? (
-              periodActive ? null : (
-                <button onClick={() => handleStartClick(selectedDay)} style={{ padding: "8px 14px", borderRadius: 8, border: `1px solid ${COLORS.line}`, background: "transparent", color: COLORS.inkSoft, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
-                  Period started
-                </button>
-              )
+              null
             ) : (
               <div>
                 {(() => {
@@ -1079,6 +1133,10 @@ function CalendarTab({ logs, periods, periodActive, currentCycleDay, startPeriod
             <ChevronRight size={18} />
           </button>
         </div>
+        {(() => {
+          const ovulationDayKeys = periods.map((p) => dateKey(addDays(p.start, 14)));
+          return (
+            <>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 4 }}>
           {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
             <div key={i} style={{ textAlign: "center", fontSize: 11, color: COLORS.inkFaint }}>{d}</div>
@@ -1096,37 +1154,51 @@ function CalendarTab({ logs, periods, periodActive, currentCycleDay, startPeriod
             const isPendingStart = pendingStartDate && dateKey(d) === dateKey(pendingStartDate);
             const dayLogForCell = findLog(logs, d);
             const dotsSystems = dayLogForCell ? SYSTEMS.filter((s) => dayLogForCell.entries[s.id].length > 0) : [];
+            const isOvulationDay = ovulationDayKeys.includes(dateKey(d));
             return (
               <button
                 key={i}
                 onClick={() => (pendingStartDate ? confirmPendingStart(d) : handleDayClick(d))}
                 disabled={isDisabled}
                 style={{
-                  aspectRatio: "1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
+                  position: "relative",
+                  aspectRatio: "1", display: "block",
                   borderRadius: 8,
                   border: isPendingStart
                     ? `2px solid ${COLORS.flare}`
+                    : marked
+                    ? `2px solid ${COLORS.pelvicDark}`
                     : predicted
                     ? `1.5px dashed ${COLORS.pelvicDark}`
                     : isToday
                     ? `2px solid ${COLORS.ink}`
                     : "1px solid transparent",
-                  background: marked ? COLORS.pelvicDark : "transparent",
-                  color: marked ? "#fff" : inMonth ? COLORS.ink : COLORS.inkFaint,
+                  background: "transparent",
+                  color: inMonth ? COLORS.ink : COLORS.inkFaint,
                   opacity: isDisabled && !predicted ? 0.3 : inMonth ? 1 : 0.4, fontSize: 12.5, fontWeight: marked ? 600 : 400,
                   cursor: isDisabled ? "default" : "pointer", padding: 2,
                 }}
               >
-                {d.getDate()}
-                <span style={{ display: "flex", gap: 1.5, height: 5 }}>
+                {isOvulationDay && (
+                  <span style={{ position: "absolute", top: 2, left: "50%", transform: "translateX(-50%)" }}>
+                    <LogoMark size={10} />
+                  </span>
+                )}
+                <span style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}>
+                  {d.getDate()}
+                </span>
+                <span style={{ position: "absolute", top: "74%", left: "50%", transform: "translate(-50%, -50%)", display: "flex", gap: 1.5, height: 5 }}>
                   {dotsSystems.map((s) => (
-                    <span key={s.id} style={{ width: 4, height: 4, borderRadius: 4, background: s.color, display: "inline-block", border: marked ? "1px solid rgba(255,255,255,0.6)" : "none" }} />
+                    <span key={s.id} style={{ width: 4, height: 4, borderRadius: 4, background: s.color, display: "inline-block" }} />
                   ))}
                 </span>
               </button>
             );
           })}
         </div>
+            </>
+          );
+        })()}
 
         {!selectedDay && predictedPeriod && (
           <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.pelvicDark, marginTop: 16, textAlign: "center" }}>
